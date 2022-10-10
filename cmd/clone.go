@@ -77,49 +77,49 @@ func Shellout(command string) (error, string, string) {
 	return err, stdout.String(), stderr.String()
 }
 
-func getSourceResources(kubeConfig string) {
+func getSourceResources(kubeConfig string) error {
 
 	cmd := "kubectl get deployment -o json --kubeconfig=" + kubeConfig + "> source_resources.json"
 
-	err, out, errout := Shellout(cmd)
+	err, _, _ := Shellout(cmd)
 	if err != nil {
 		log.Printf("error: %v\n", err)
+		return err
 	}
-	fmt.Println(out)
-	fmt.Println(errout)
+	return nil
 }
 
-func getLastAppliedConfig() {
+func getLastAppliedConfig() error {
 	file, err := ioutil.ReadFile("source_resources.json")
 
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 
 	res := Items{}
 
 	json.Unmarshal([]byte(file), &res)
-
-	log.Println(res.Items[0].Metadata.Annotations.Config)
 	data := res.Items[0].Metadata.Annotations.Config
 
 	writeErr := os.WriteFile("source_resources.json", []byte(data), 0644)
 	if writeErr != nil {
 		log.Println(err)
+		return err
 	}
 
+	return nil
 }
 
-func applyConfig(kubeConfig string) {
-
+func applyConfig(kubeConfig string) error {
 	cmd := "kubectl apply -f source_resources.json --kubeconfig=" + kubeConfig
 
-	err, out, errout := Shellout(cmd)
+	err, _, _ := Shellout(cmd)
 	if err != nil {
 		log.Printf("error: %v\n", err)
+		return err
 	}
-	fmt.Println(out)
-	fmt.Println(errout)
+	return nil
 }
 
 var sourceKubeConfig string
@@ -140,9 +140,18 @@ var cloneCmd = &cobra.Command{
 		sourceKubeConfig = getConfigPath(args[0])
 		destKubeConfig = getConfigPath(args[1])
 
-		getSourceResources(sourceKubeConfig)
-		getLastAppliedConfig()
-		applyConfig(destKubeConfig)
+		err := getSourceResources(sourceKubeConfig)
+		if err != nil {
+			log.Println("error getting source resources")
+		}
+		configReadErr := getLastAppliedConfig()
+		if configReadErr != nil {
+			log.Println("error parsing resource file")
+		}
+		applyErr := applyConfig(destKubeConfig)
+		if applyErr != nil {
+			log.Println("error applying config to destination")
+		}
 	},
 }
 
