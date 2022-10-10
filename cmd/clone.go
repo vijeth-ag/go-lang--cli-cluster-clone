@@ -143,14 +143,17 @@ var cloneCmd = &cobra.Command{
 		err := getSourceResources(sourceKubeConfig)
 		if err != nil {
 			log.Println("error getting source resources")
+			return
 		}
 		configReadErr := getLastAppliedConfig()
 		if configReadErr != nil {
 			log.Println("error parsing resource file")
+			return
 		}
 		applyErr := applyConfig(destKubeConfig)
 		if applyErr != nil {
 			log.Println("error applying config to destination")
+			return
 		}
 	},
 }
