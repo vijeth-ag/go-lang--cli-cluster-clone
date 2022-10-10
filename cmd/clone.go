@@ -5,8 +5,11 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -86,6 +89,27 @@ func getSourceResources(kubeConfig string) {
 	fmt.Println(errout)
 }
 
+func getLastAppliedConfig() {
+	file, err := ioutil.ReadFile("source_resources.json")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res := Items{}
+
+	json.Unmarshal([]byte(file), &res)
+
+	log.Println(res.Items[0].Metadata.Annotations.Config)
+	data := res.Items[0].Metadata.Annotations.Config
+
+	writeErr := os.WriteFile("source_resources.json", []byte(data), 0644)
+	if writeErr != nil {
+		log.Println(err)
+	}
+
+}
+
 func applyConfig(kubeConfig string) {
 
 	cmd := "kubectl apply -f source_resources.json --kubeconfig=" + kubeConfig
@@ -117,6 +141,7 @@ var cloneCmd = &cobra.Command{
 		destKubeConfig = getConfigPath(args[1])
 
 		getSourceResources(sourceKubeConfig)
+		getLastAppliedConfig()
 		applyConfig(destKubeConfig)
 	},
 }
